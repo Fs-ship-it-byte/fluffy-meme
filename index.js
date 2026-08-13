@@ -353,6 +353,9 @@ app.get("/:config/configure", (req, res) => {
 const streams = require("./routes/streams");
 app.use(streams);
 
+const proxyRoute = require("./routes/proxy");
+app.use(proxyRoute.router);
+
 const meta = require("./routes/meta");
 app.use(meta);
 
