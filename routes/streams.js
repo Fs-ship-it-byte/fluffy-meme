@@ -170,11 +170,23 @@ function HandleStreamRequest(req, res, next) {
         console.log('\x1b[36mGot TioAnime entry:\x1b[39m', slug, 'ep.', ep)
         return tioanimeAPI.GetItemStreams(slug, onlyInternal, ep)
       })
-      const animejarap = animejaraAPI.SearchAnimeJara(baseTitle, req.params.type).then((animeFLVitem) => {
-        const result = fuzzysort.go(baseTitle, animeFLVitem, {key: 'title', limit: 1})[0]?.obj || animeFLVitem[0];
-        console.log('\x1b[36mGot AnimeJara entry:\x1b[39m', result.title)
-        return animejaraAPI.GetItemStreams(result.slug, onlyInternal, season, episode)
-      })
+      const animejarap = absoluteEpisodePromise.then((absoluteEpisode) =>
+        animejaraAPI.SearchAnimeJara(baseTitle, req.params.type).then((animeFLVitem) => {
+          const result = fuzzysort.go(baseTitle, animeFLVitem, {key: 'title', limit: 1})[0]?.obj || animeFLVitem[0];
+          console.log('\x1b[36mGot AnimeJara entry:\x1b[39m', result.title)
+          if (absoluteEpisode !== undefined) {
+            return animejaraAPI.ResolveAbsoluteEpisode(result.slug, absoluteEpisode).then((resolved) => {
+              if (resolved) {
+                console.log('\x1b[36mAnimeJara absolute episode\x1b[39m', absoluteEpisode, '\x1b[36m-> real S/E:\x1b[39m', resolved.season, resolved.episode)
+                return animejaraAPI.GetItemStreams(result.slug, onlyInternal, resolved.season, resolved.episode)
+              }
+              console.log('\x1b[33mAnimeJara: absolute episode out of range, falling back to raw season/episode\x1b[39m')
+              return animejaraAPI.GetItemStreams(result.slug, onlyInternal, season, episode)
+            })
+          }
+          return animejaraAPI.GetItemStreams(result.slug, onlyInternal, season, episode)
+        })
+      )
       const jkanimep = absoluteEpisodePromise.then((absoluteEpisode) => seasonResolver.ResolveEpisode({
         searchFn: (title) => jkanimeAPI.SearchJKAnime(title),
         getBySlugFn: (slug) => jkanimeAPI.GetAnimeBySlug(slug),
