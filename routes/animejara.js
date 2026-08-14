@@ -120,6 +120,22 @@ exports.GetAnimeBySlug = async function (slug, type = "series") {
     }
   })
 }
+/**
+ * Maps an absolute episode number (counting every episode of the show in order, ignoring how
+ * AnimeJara itself splits it into seasons) to AnimeJara's own real season+episode numbers for that slug.
+ * Needed because AnimeJara's season boundaries don't always match TMDB's (e.g. TMDB's "season 9" of
+ * Dragon Ball Z doesn't necessarily exist as "season 9" on AnimeJara).
+ * @param {string} slug
+ * @param {number} absoluteEpisode - 1-based, counting from AnimeJara's own first episode
+ * @returns {Promise<{season:number, episode:number}|undefined>} undefined if out of range
+ */
+exports.ResolveAbsoluteEpisode = async function (slug, absoluteEpisode) {
+  const anime = await this.GetAnimeBySlug(slug)
+  const video = anime.videos?.[absoluteEpisode - 1]
+  if (!video) return undefined
+  return { season: video.season, episode: video.episode }
+}
+
 //WIP
 exports.GetItemStreams = async function (slug, onlyInternal = true, season = undefined, epNumber = undefined) {
   return GetEpisodeLinks(slug, season, epNumber).then((data) => {
